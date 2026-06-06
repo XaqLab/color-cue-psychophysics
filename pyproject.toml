@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=61.0.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "color-cue"
+version = "0.1.0"
+description = "Stimulus generation and psychophysics workflows for the color-cue task"
+authors = [{name = "Noushin Quazi"}]
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "numpy>=2.2.3,<3.0.0",
+    "matplotlib>=3.10.1,<4.0.0",
+    "pandas>=2.2.3,<3.0.0",
+    "scipy>=1.15.2,<2.0.0",
+]
+
+[project.optional-dependencies]
+collect = [
+    "jupyterlab>=4.0.0",
+    "ipykernel>=6.0.0",
+    "pyqt6>=6.0.0",
+]
+dev = [
+    "pytest",
+    "jupyterlab>=4.0.0",
+    "ipykernel>=6.0.0",
+    "pyqt6>=6.0.0",
+]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+color_cue = ["data/cmap.csv"]

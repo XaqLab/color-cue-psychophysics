@@ -1,0 +1,539 @@
+\documentclass[11pt]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{amsmath, amssymb, amsfonts}
+\usepackage{mathtools}
+\usepackage{enumitem}
+\usepackage{hyperref}
+
+\title{Mathematical Definitions of the Color-Cue Stimuli}
+\author{}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+This document is a compact mathematical companion to the \texttt{color\_cue}
+workflow. Its goal is to describe, in equations, the \textbf{old stimulus}
+used in the original color-cue exploration and the \textbf{new stimulus} used
+in the theta-noise psychophysics design.
+
+We keep the notation close to the implementation in the package modules
+\texttt{color\_cue.stimulus} and \texttt{color\_cue.psychophysics}.
+
+\section{Coordinate System and Cue-Angle Mapping}
+
+The stimulus is defined on a two-dimensional image lattice with pixel
+coordinates
+\[
+(u, v) \in \{1, \dots, H\} \times \{1, \dots, W\}.
+\]
+
+The latent color cue is parameterized by a scalar \texttt{cue} in $[0,1]$,
+which is mapped to a hue angle $\theta$ on a restricted arc of the color
+circle:
+\[
+\theta = \theta_{\min} + \text{cue}\,(\theta_{\max} - \theta_{\min}).
+\]
+
+Equivalently,
+\[
+\text{cue} = \frac{\theta - \theta_{\min}}{\theta_{\max} - \theta_{\min}}.
+\]
+
+In the current implementation,
+\[
+\theta_{\min} = -\frac{\pi}{2},
+\qquad
+\theta_{\max} = 0.
+\]
+
+So the cue lives on the quarter-circle from blue-ish angles toward red-ish
+angles.
+
+\section{Old Stimulus: Original Color-Cue Generator}
+
+The original generator creates a spatially correlated complex random field and
+then adds a deterministic signal vector of magnitude $\kappa$ pointing at angle
+$\theta$.
+
+\subsection{Frequency-Domain Noise}
+
+Let $(f_x, f_y)$ denote spatial frequencies. The code defines the radial
+frequency
+\[
+f = \sqrt{f_x^2 + f_y^2},
+\]
+
+and a power-law spatial spectrum
+\[
+S(f) = (f + \varepsilon)^{\beta},
+\]
+
+with a small $\varepsilon > 0$ for numerical stability and with the DC term
+set to zero:
+\[
+S(0) = 0.
+\]
+
+A complex Gaussian field is sampled in the Fourier domain:
+\[
+\tilde{N}(f_x, f_y)
+= \bigl(Z_1(f_x, f_y) + i Z_2(f_x, f_y)\bigr)\,S(f)^{1/2},
+\]
+
+where $Z_1, Z_2 \sim \mathcal{N}(0,1)$ independently.
+
+The corresponding spatial complex noise field is then
+\[
+N(u,v) = \mathcal{F}^{-1}\!\left[\tilde{N}(f_x, f_y)\right](u,v).
+\]
+
+\subsection{Deterministic Color Signal}
+
+The latent cue angle $\theta$ is converted into a unit complex vector
+\[
+e^{i\theta} = \cos\theta + i\sin\theta.
+\]
+
+The stimulus reliability parameter $\kappa \ge 0$ sets the magnitude of the
+deterministic signal contribution. The complex image before taking angles is
+\[
+X(u,v) = N(u,v) + \kappa e^{i\theta}.
+\]
+
+Interpretation:
+\begin{itemize}[leftmargin=2em]
+\item $N(u,v)$ provides spatially correlated texture-like color fluctuations.
+\item $\kappa e^{i\theta}$ shifts every pixel in the same direction in the
+complex plane.
+\item Larger $\kappa$ means the mean color signal dominates the texture noise
+more strongly.
+\end{itemize}
+
+\subsection{Pixel-Wise Angle Readout}
+
+Each pixel is then mapped to its complex angle:
+\[
+\phi(u,v) = \arg\bigl(X(u,v)\bigr).
+\]
+
+Finally, this angle is rescaled into a value in $[0,1)$ for lookup in the
+color map:
+\[
+C(u,v) = \frac{1}{2\pi}\phi(u,v) + \mathbf{1}\{\phi(u,v) \le 0\}.
+\]
+
+The resulting array $C(u,v)$ is what is displayed using the custom colormap.
+
+This is the \textbf{old single-stimulus definition}: one latent angle
+$\theta$, one reliability $\kappa$, one correlated texture realization.
+
+\section{Old Stimulus With Temporal Correlation}
+
+For movies, the generator introduces temporal correlation in the Fourier-domain
+noise.
+
+If $\tilde{N}_t$ is the complex Fourier noise at frame $t$, then for
+$t \ge 2$ the update is
+\[
+\tilde{N}_t
+= \Gamma \odot \tilde{N}_{t-1} + (1-\Gamma) \odot \tilde{\eta}_t,
+\]
+
+where:
+\begin{itemize}[leftmargin=2em]
+\item $\tilde{\eta}_t$ is a fresh complex Gaussian draw with the same spectrum,
+\item $\Gamma = e^{-\alpha f}$ is a frequency-dependent temporal persistence
+term,
+\item $\odot$ denotes elementwise multiplication.
+\end{itemize}
+
+Each frame then uses the same signal term $\kappa e^{i\theta}$ but a
+temporally correlated noise realization.
+
+\section{Why the Old Stimulus Motivates a New Noise Manipulation}
+
+In the original exploration, two summary statistics behaved very differently:
+
+\begin{enumerate}[leftmargin=2em]
+\item \textbf{Arithmetic mean of pixel angles}
+\[
+\bar{\phi}_{\mathrm{arith}} = \frac{1}{HW} \sum_{u,v} \phi(u,v),
+\]
+which showed noticeable variability.
+
+\item \textbf{Circular mean angle}
+\[
+\bar{\phi}_{\mathrm{circ}}
+= \arg\left(\frac{1}{HW} \sum_{u,v} e^{i\phi(u,v)}\right),
+\]
+which showed little or no variability under the tested conditions.
+\end{enumerate}
+
+This suggests that if an observer behaves more like a pooling mechanism near
+the circular mean, then much of the old texture noise may average away. That
+is the motivation for injecting noise directly into the latent signal angle
+itself.
+
+\section{New Stimulus: Theta-Noise Comparison Design}
+
+The new design is not a single stimulus in isolation. It is a
+\textbf{pairwise comparison stimulus} used in a two-alternative forced-choice
+(2AFC) task.
+
+Each trial starts from:
+\begin{itemize}[leftmargin=2em]
+\item a base angle $\theta_0$,
+\item a signed intended separation $\Delta\theta$,
+\item an external noise scale $\sigma_{\mathrm{ext}}$.
+\end{itemize}
+
+The noiseless target angles for the left and right stimuli are defined
+symmetrically:
+\[
+\theta_L^{\ast} = \theta_0 - \frac{\Delta\theta}{2},
+\qquad
+\theta_R^{\ast} = \theta_0 + \frac{\Delta\theta}{2}.
+\]
+
+So the intended left-right difference is exactly
+\[
+\theta_R^{\ast} - \theta_L^{\ast} = \Delta\theta.
+\]
+
+\subsection{Independent External Theta Noise}
+
+In the main psychophysics design, each side receives its own independent
+perturbation:
+\[
+\varepsilon_L \sim \mathcal{N}(0, \sigma_{\mathrm{ext}}^2),
+\qquad
+\varepsilon_R \sim \mathcal{N}(0, \sigma_{\mathrm{ext}}^2),
+\]
+
+with $\varepsilon_L$ and $\varepsilon_R$ independent.
+
+The displayed latent angles become
+\[
+\theta_L = \theta_L^{\ast} + \varepsilon_L,
+\qquad
+\theta_R = \theta_R^{\ast} + \varepsilon_R.
+\]
+
+After this, each side is rendered using the \textbf{same old single-stimulus
+generator}, but with its own noisy angle:
+\[
+X_L(u,v) = N_L(u,v) + \kappa e^{i\theta_L},
+\qquad
+X_R(u,v) = N_R(u,v) + \kappa e^{i\theta_R}.
+\]
+
+So the new design keeps the pixel generator structurally the same while
+changing the trial-level latent parameterization.
+
+\subsection{Shared External Theta Noise Control}
+
+The control condition uses a single common perturbation
+\[
+\varepsilon \sim \mathcal{N}(0, \sigma_{\mathrm{ext}}^2),
+\]
+
+and applies it to both sides:
+\[
+\theta_L = \theta_L^{\ast} + \varepsilon,
+\qquad
+\theta_R = \theta_R^{\ast} + \varepsilon.
+\]
+
+This changes the absolute hue of the whole trial, but preserves the intended
+relative difference:
+\[
+\theta_R - \theta_L
+= (\theta_R^{\ast} + \varepsilon) - (\theta_L^{\ast} + \varepsilon)
+= \Delta\theta.
+\]
+
+That is why shared noise is expected to affect discrimination much less than
+independent noise.
+
+\section{Task Definition in the New Experiment}
+
+On each trial, the observer sees the left and right stimuli side by side and
+answers one of two prompts:
+\begin{itemize}[leftmargin=2em]
+\item \textbf{Which is redder?}
+\item \textbf{Which is bluer?}
+\end{itemize}
+
+If larger $\theta$ corresponds to redder colors on the chosen arc, then:
+\begin{itemize}[leftmargin=2em]
+\item in a \textbf{redder} context, the correct response is right when
+$\theta_R > \theta_L$,
+\item in a \textbf{bluer} context, the correct response is right when
+$\theta_R < \theta_L$.
+\end{itemize}
+
+The task is therefore defined by a comparison of the two latent hue signals,
+not by an absolute report of one stimulus alone.
+
+\section{Two-Stage Per-Stimulus Noise Calibration}
+
+The revised psychophysics paradigm uses the same 2AFC stimulus structure, but
+changes the role of external noise. The goal is to use standard psychophysics
+to estimate each observer's internal noise and then add subject-specific
+external noise so that different observers have the same effective total
+uncertainty in the task.
+
+The paradigm has two stages:
+\begin{enumerate}[leftmargin=2em]
+\item \textbf{Experiment 1: baseline threshold measurement.} Measure a
+baseline psychometric curve with no injected external theta noise and estimate
+the subject's per-stimulus internal noise scale $\sigma_{\mathrm{int}}$.
+\item \textbf{Experiment 2: matched-noise task.} Choose experimenter-defined
+target per-stimulus total noise levels $\sigma_{\mathrm{target}}$ and compute
+the external noise needed for each subject.
+\end{enumerate}
+
+\subsection{Per-Stimulus Versus Comparison Noise}
+
+The sigmas in this calibration are defined per stimulus. For a left-right
+trial, the observer is modeled as forming noisy latent-angle estimates
+\[
+\hat{\theta}_L
+= \theta_L
++ \varepsilon_{L,\mathrm{int}}
++ \varepsilon_{L,\mathrm{ext}},
+\qquad
+\hat{\theta}_R
+= \theta_R
++ \varepsilon_{R,\mathrm{int}}
++ \varepsilon_{R,\mathrm{ext}}.
+\]
+
+Under the default independent-noise model,
+\[
+\varepsilon_{L,\mathrm{int}}, \varepsilon_{R,\mathrm{int}}
+\sim \mathcal{N}(0,\sigma_{\mathrm{int}}^2),
+\qquad
+\varepsilon_{L,\mathrm{ext}}, \varepsilon_{R,\mathrm{ext}}
+\sim \mathcal{N}(0,\sigma_{\mathrm{ext}}^2),
+\]
+with all four terms independent.
+
+The 2AFC decision is based on the perceived difference
+\[
+D = \hat{\theta}_R - \hat{\theta}_L.
+\]
+
+For a redder judgment,
+\[
+D
+= \Delta\theta
++ (\varepsilon_{R,\mathrm{int}} - \varepsilon_{L,\mathrm{int}})
++ (\varepsilon_{R,\mathrm{ext}} - \varepsilon_{L,\mathrm{ext}}).
+\]
+
+Therefore,
+\[
+\operatorname{Var}(D)
+= 2\sigma_{\mathrm{int}}^2 + 2\sigma_{\mathrm{ext}}^2
+= 2\left(\sigma_{\mathrm{int}}^2 + \sigma_{\mathrm{ext}}^2\right).
+\]
+
+This factor of two appears because the subject compares two noisy stimulus
+estimates. The calibration variables $\sigma_{\mathrm{int}}$,
+$\sigma_{\mathrm{ext}}$, and $\sigma_{\mathrm{target}}$ remain
+\textbf{per-stimulus} quantities.
+
+\section{Experiment 1: Estimating Internal Noise}
+
+The baseline experiment uses no injected external theta noise:
+\[
+\sigma_{\mathrm{ext}} = 0.
+\]
+
+For a redder judgment under the independent Gaussian 2AFC model,
+\[
+P(\text{choose right} \mid \Delta\theta)
+= \Phi\!\left(
+\frac{\Delta\theta}{\sqrt{2}\,\sigma_{\mathrm{int}}}
+\right),
+\]
+where $\Phi$ is the standard normal cumulative distribution function.
+
+The bluer judgment has the same form after flipping the sign of
+$\Delta\theta$, so that positive effective evidence always favors a rightward
+response.
+
+If a psychometric threshold $\operatorname{JND}_p$ is defined as the value of
+$|\Delta\theta|$ required to reach criterion performance $p$, then
+\[
+\operatorname{JND}_p
+= \sqrt{2}\,\sigma_{\mathrm{int}}\,\Phi^{-1}(p).
+\]
+
+Solving for the per-stimulus internal noise gives
+\[
+\sigma_{\mathrm{int}}
+= \frac{\operatorname{JND}_p}
+{\sqrt{2}\,\Phi^{-1}(p)}.
+\]
+
+For example, if the threshold is defined at $p=0.75$, then
+\[
+\sigma_{\mathrm{int}}
+= \frac{\operatorname{JND}_{0.75}}
+{\sqrt{2}\,\Phi^{-1}(0.75)}.
+\]
+
+This is the key calibration step: the psychometric curve is fit to the
+left-right comparison, but the reported internal noise is converted back to a
+per-stimulus noise scale.
+
+\section{Experiment 2: Matching Total Noise Across Subjects}
+
+In the matched-noise experiment, the experimenter chooses a set of target
+per-stimulus total noise levels,
+\[
+\sigma_{\mathrm{target},1},
+\sigma_{\mathrm{target},2},
+\dots,
+\sigma_{\mathrm{target},K}.
+\]
+
+For each subject and each target level, external theta noise is chosen so that
+\[
+\sigma_{\mathrm{target}}^2
+= \sigma_{\mathrm{int}}^2 + \sigma_{\mathrm{ext}}^2.
+\]
+
+Thus,
+\[
+\sigma_{\mathrm{ext}}
+= \sqrt{
+\sigma_{\mathrm{target}}^2 - \sigma_{\mathrm{int}}^2
+}.
+\]
+
+This calculation is feasible only when
+\[
+\sigma_{\mathrm{target}} \ge \sigma_{\mathrm{int}}.
+\]
+If a subject's internal noise is already larger than a target level, then that
+target cannot be reached by adding independent external noise. In practice,
+target levels should be chosen at or above the largest internal-noise estimate
+among the subjects intended to share a matched-noise condition.
+
+Under this construction, two subjects with different baseline thresholds can
+receive different external noise levels but have the same predicted total
+per-stimulus uncertainty:
+\[
+\sigma_{\mathrm{total}}
+= \sqrt{\sigma_{\mathrm{int}}^2 + \sigma_{\mathrm{ext}}^2}
+= \sigma_{\mathrm{target}}.
+\]
+
+The predicted comparison-level standard deviation is then
+\[
+\sigma_D = \sqrt{2}\,\sigma_{\mathrm{target}},
+\]
+so the resulting psychometric curves should overlap when plotted against
+$\Delta\theta$.
+
+\subsection{SNR Interpretation}
+
+The same calibration can be described in signal-to-noise-ratio language. For
+a target hue separation $\Delta\theta$, the comparison-level SNR is
+\[
+\operatorname{SNR}
+= \frac{|\Delta\theta|}{\sqrt{2}\,\sigma_{\mathrm{target}}}.
+\]
+
+The design rule is still total-noise matching. SNR is a useful way to report
+the implied difficulty of a chosen $\Delta\theta$ under a chosen
+$\sigma_{\mathrm{target}}$.
+
+\section{Correlated Internal Noise Caveat}
+
+The derivation above assumes that the left and right internal noises are
+independent. If there are common internal fluctuations across the two
+simultaneously viewed stimuli, then the internal noise terms may be correlated.
+
+Let
+\[
+\operatorname{Corr}(
+\varepsilon_{L,\mathrm{int}},
+\varepsilon_{R,\mathrm{int}}
+) = \rho_{\mathrm{int}}.
+\]
+
+Assuming both sides have the same per-stimulus internal variance
+$\sigma_{\mathrm{int}}^2$, the internal contribution to the comparison
+variance is
+\[
+\operatorname{Var}(
+\varepsilon_{R,\mathrm{int}} - \varepsilon_{L,\mathrm{int}}
+)
+= 2\sigma_{\mathrm{int}}^2(1-\rho_{\mathrm{int}}).
+\]
+
+A standard 2AFC psychometric curve therefore identifies the effective
+differential internal noise,
+\[
+\sigma_{\mathrm{int,diff}}
+= \sigma_{\mathrm{int}}\sqrt{1-\rho_{\mathrm{int}}},
+\]
+not $\sigma_{\mathrm{int}}$ and $\rho_{\mathrm{int}}$ separately.
+
+For the first version of the calibration analysis, the working assumption is
+\[
+\rho_{\mathrm{int}} = 0.
+\]
+If common internal fluctuations are plausible, the baseline calibration should
+be interpreted more carefully as the per-stimulus noise component that
+survives the left-right comparison.
+
+Shared external-noise controls are useful here. If shared external noise
+mostly cancels, then common-mode perturbations are not strongly affecting
+discrimination. If shared-noise thresholds are not flat, then the calibration
+should be reported as an effective differential-noise calibration rather than
+a literal independent per-stimulus noise estimate. Estimating
+$\rho_{\mathrm{int}}$ directly would require an additional design that can
+separate common-mode and differential noise.
+
+\section{Summary: Old Versus New Stimulus Definitions}
+
+\subsection*{Old stimulus}
+
+One stimulus is generated from
+\[
+X(u,v) = N(u,v) + \kappa e^{i\theta},
+\]
+
+followed by a pixel-wise angle readout and colormap mapping.
+
+The key noise source is the correlated texture field $N(u,v)$.
+
+\subsection*{New calibrated 2AFC design}
+
+A trial contains a left-right pair with latent targets
+\[
+\theta_L^{\ast} = \theta_0 - \frac{\Delta\theta}{2},
+\qquad
+\theta_R^{\ast} = \theta_0 + \frac{\Delta\theta}{2},
+\]
+
+and then can add trial-level theta noise before rendering each side through
+the same generator.
+
+The key new manipulation is not a change in the pixel generator itself, but a
+change in the \textbf{latent trial structure}: baseline 2AFC behavior is used
+to estimate per-stimulus internal noise, and external theta noise is then
+chosen subject by subject to reach experimenter-defined total noise levels.
+
+\end{document}
