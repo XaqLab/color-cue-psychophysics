@@ -1,4 +1,4 @@
-# `color_cue` Notebooks
+# `color-cue-psychophysics` Notebooks
 
 These notebooks are the package-local demos and launch notebooks for
 `color_cue`. They are designed to be thin wrappers over the installable package

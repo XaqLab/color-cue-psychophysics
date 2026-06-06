@@ -1,4 +1,4 @@
-# Contributing to `color_cue`
+# Contributing to `color-cue-psychophysics`
 
 ## Layout
 

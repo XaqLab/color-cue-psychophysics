@@ -1,9 +1,9 @@
-# color_cue
+# color-cue-psychophysics
 
-`color_cue` is an installable Python package for the color-cue psychophysics
-workflow. It contains the reusable code for generating stimuli, running
-notebook-launched human 2AFC tasks, saving sessions, and analyzing baseline and
-calibrated-noise behavior.
+`color-cue-psychophysics` is an installable Python project that provides the
+`color_cue` package for the color-cue psychophysics workflow. It contains the
+reusable code for generating stimuli, running notebook-launched human 2AFC
+tasks, saving sessions, and analyzing baseline and calibrated-noise behavior.
 
 Colleagues who need to collect or inspect color-cue psychophysics data can
 install this package directly and use the notebooks in `notebooks/`.
@@ -36,7 +36,7 @@ per-stimulus value.
 ## Repository Layout
 
 ```text
-color-cue/
+color-cue-psychophysics/
 ├── pyproject.toml
 ├── README.md
 ├── CONTRIBUTING.md
