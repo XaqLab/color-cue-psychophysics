@@ -1,0 +1,17 @@
+{
+  "admin": {
+    "subject_id": "admin",
+    "password_hash": "scrypt:32768:8:1$4Ve817LzJqELHRQF$8b20d4eec9c452349c6f6644947b07484195a8ac905729f43e60542812f0a62aef2ee5249b3f58f9d458a4999a9b7c7ddfe6cbaf89ee3ae433b64d0e33591343",
+    "is_admin": true
+  },
+  "1": {
+    "subject_id": "1",
+    "password_hash": "scrypt:32768:8:1$LavNir0UqMXdjhW9$94f7fbc6f23b54d0d58748c2a6a82d15d5156abece047132e783ce2268c206b283792573d8b649c4390f58ce96b21b9a462e4ee6570dbd6331ed56b04e17d834",
+    "is_admin": false
+  },
+  "dk": {
+    "subject_id": "dk",
+    "password_hash": "scrypt:32768:8:1$H97YGBGA3KCMR3X5$cf805edf813dd97f0569c4b971202acd01f7f59d936819f8947156bec653995322a73332572bfc336236a3fbed6f2bdc6b7e2cd653ffb43e673abbe7016f67c4",
+    "is_admin": false
+  }
+}

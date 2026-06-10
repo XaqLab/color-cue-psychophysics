@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Log In – Color-Cue Calibration{% endblock %}
+{% block content %}
+<div style="max-width:380px; margin:4rem auto;">
+  <div class="card">
+    <h1 style="text-align:center; margin-bottom:1.5rem;">Participant Login</h1>
+    {% if error %}
+      <div class="alert alert-error">{{ error }}</div>
+    {% endif %}
+    <form method="post">
+      <label for="subject_id">Participant ID</label>
+      <input type="text" id="subject_id" name="subject_id" required autofocus
+             autocomplete="username">
+      <label for="password">Password</label>
+      <input type="password" id="password" name="password" required
+             autocomplete="current-password">
+      <button type="submit" class="btn btn-primary" style="width:100%">
+        Log In
+      </button>
+    </form>
+    <p style="text-align:center; margin-top:1rem; font-size:0.85rem; color:#666;">
+      New participant?
+      <a href="{{ url_for('register_public') }}">Create an account</a>
+    </p>
+  </div>
+</div>
+{% endblock %}

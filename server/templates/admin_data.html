@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block title %}Data Dashboard{% endblock %}
+{% block content %}
+
+<p style="margin-bottom:1rem;">
+  <a href="{{ url_for('admin') }}" class="btn btn-secondary">← Admin Panel</a>
+</p>
+<h1>Data Dashboard</h1>
+
+<!-- ══ Experiment 1: Baseline Staircase ═══════════════════════════════════ -->
+<h2 style="margin-top:1.5rem; border-bottom:2px solid #2980b9; padding-bottom:0.4rem;">
+  Experiment 1 — Baseline Staircase
+</h2>
+
+{% if summary_records %}
+<div class="card">
+  <h2>σ_internal Estimates</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Participant</th>
+        <th>Mean σ_internal</th>
+        <th>Std</th>
+        <th>Staircases</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in summary_records %}
+      <tr>
+        <td>
+          <a href="{{ url_for('admin_user', subject_id=r.subject_id) }}"
+             style="color:#2980b9;text-decoration:none;font-weight:600;">
+            {{ r.subject_id }}
+          </a>
+        </td>
+        <td>{{ "%.4f"|format(r.mean) }}</td>
+        <td>{{ "%.4f"|format(r.std) if r.std == r.std else "—" }}</td>
+        <td>{{ r["count"]|int }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="card" style="color:#888;">
+  No baseline staircase data yet.
+</div>
+{% endif %}
+
+{% if si_plot %}
+<div class="card">
+  <h2>σ_internal Across Participants</h2>
+  <p style="font-size:0.85rem;color:#555;margin-bottom:0.75rem;">
+    Each bar shows mean ± std across all completed staircases for that participant.
+    Individual staircase estimates are overlaid as dots.  The dashed line marks
+    the grand mean.
+  </p>
+  <img src="data:image/png;base64,{{ si_plot }}"
+       style="max-width:100%;border-radius:4px;" alt="sigma_internal summary">
+</div>
+{% endif %}
+
+<!-- ══ Experiment 2: Calibration ══════════════════════════════════════════ -->
+<h2 style="margin-top:2rem; border-bottom:2px solid #27ae60; padding-bottom:0.4rem;">
+  Experiment 2 — Calibration Validation
+</h2>
+
+{% if not validation_plot and not overlay_plot %}
+<div class="card" style="color:#888;">
+  No calibrated session data yet.
+</div>
+{% endif %}
+
+{% if validation_plot %}
+<div class="card">
+  <h2>Fitted vs Target Noise (Identity Plot)</h2>
+  <p style="font-size:0.85rem;color:#555;margin-bottom:0.75rem;">
+    Each point is one (participant, context, σ_target) psychometric fit.
+    The dashed diagonal is the identity line — a perfectly calibrated
+    participant's points should fall on it.  Points <em>above</em> the line
+    mean the effective noise was higher than intended (under-calibrated);
+    points <em>below</em> mean it was lower (over-calibrated).
+  </p>
+  <img src="data:image/png;base64,{{ validation_plot }}"
+       style="max-width:620px;width:100%;border-radius:4px;"
+       alt="calibration validation scatter">
+</div>
+{% endif %}
+
+{% if overlay_plot %}
+<div class="card">
+  <h2>Psychometric Curves by σ_target — All Participants Overlaid</h2>
+  <p style="font-size:0.85rem;color:#555;margin-bottom:0.75rem;">
+    Each panel shows one (context, σ_target) condition.  Every participant's
+    fitted Gaussian psychometric curve is plotted in a distinct colour, with
+    their empirical response proportions as dots.<br><br>
+    <strong>How to read this:</strong> if the noise calibration succeeded,
+    curves within each panel should collapse onto one — all participants
+    experience the same effective noise level σ_target, so the task is
+    equally difficult for everyone regardless of their individual σ_internal.
+    Divergent curves indicate a participant whose σ_internal estimate was
+    inaccurate or whose sensitivity changed between sessions.
+  </p>
+  <img src="data:image/png;base64,{{ overlay_plot }}"
+       style="max-width:100%;border-radius:4px;"
+       alt="psychometric overlay by sigma_target">
+</div>
+{% endif %}
+
+{% endblock %}

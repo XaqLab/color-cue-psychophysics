@@ -1,0 +1,2 @@
+staircase_id,sigma_ext,context,shared_noise,n_trials,reversal_count,active,threshold_reversal_count_used,threshold_estimate
+sigma_0,0.0,redder,False,30,10,False,6,0.0775

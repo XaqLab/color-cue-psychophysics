@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+{% block title %}Manage {{ target_subject }}{% endblock %}
+{% block content %}
+
+<p style="margin-bottom:1rem;">
+  <a href="{{ url_for('admin') }}" class="btn btn-secondary">← Admin Panel</a>
+</p>
+
+<h1>
+  {{ target_subject }}
+  {% if is_admin_account %}
+    <span class="tag" style="background:#fdebd0;color:#784212;font-size:0.7rem;vertical-align:middle;">Admin</span>
+  {% endif %}
+</h1>
+
+{% if sigma_internal is not none %}
+<div class="card" style="background:#eaf6fb;border-left:4px solid #2980b9;margin-bottom:1.5rem;">
+  <strong>Estimated σ_internal:</strong> {{ "%.4f"|format(sigma_internal) }}
+</div>
+{% endif %}
+
+<!-- ── Reset password ────────────────────────────────────────────── -->
+<div class="card" style="max-width:420px;">
+  <h2>Reset Password</h2>
+  <form method="post" action="{{ url_for('admin_reset_password') }}">
+    <input type="hidden" name="subject_id" value="{{ target_subject }}">
+    <label>New Password (min 6 chars)</label>
+    <input type="password" name="new_password" required minlength="6"
+           autocomplete="new-password">
+    <button type="submit" class="btn btn-primary">Set Password</button>
+  </form>
+</div>
+
+<!-- ── In-progress sessions ─────────────────────────────────────── -->
+{% if pending_sessions %}
+<div class="card">
+  <h2>In-Progress Sessions</h2>
+  <table>
+    <thead><tr>
+      <th>Session ID</th><th>Type</th><th>Trials</th><th>Status</th><th></th>
+    </tr></thead>
+    <tbody>
+      {% for s in pending_sessions %}
+      <tr>
+        <td>{{ s.session_id }}</td>
+        <td>
+          {% if s.task_type == "staircase" %}
+            <span class="tag tag-staircase">Staircase</span>
+          {% else %}
+            <span class="tag tag-calibrated">Calibrated</span>
+          {% endif %}
+        </td>
+        <td>{{ s.trials_completed }}</td>
+        <td>{% if s.is_done %}complete (unsaved){% else %}running{% endif %}</td>
+        <td>
+          <form method="post" action="{{ url_for('delete_active_session') }}"
+                onsubmit="return confirm('Delete in-progress session {{ s.session_id }}?')">
+            <input type="hidden" name="token" value="{{ s.token }}">
+            <button type="submit" class="btn btn-danger"
+                    style="padding:0.3rem 0.65rem;font-size:0.8rem;">Delete</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+<!-- ── Saved baseline sessions ──────────────────────────────────── -->
+{% if baseline_sessions %}
+<div class="card">
+  <h2>Saved Baseline Staircase Sessions</h2>
+  <table>
+    <thead><tr>
+      <th>Session ID</th><th>Trials</th><th>Context</th><th>Notes</th><th></th>
+    </tr></thead>
+    <tbody>
+      {% for s in baseline_sessions %}
+      <tr>
+        <td>{{ s.session_id }}</td>
+        <td>{{ s.n_completed_trials }}</td>
+        <td>{{ s.get("context", "—") }}</td>
+        <td style="color:#666;font-size:0.85rem;">{{ s.notes or "—" }}</td>
+        <td>
+          <form method="post" action="{{ url_for('delete_saved_session') }}"
+                onsubmit="return confirm('Permanently delete {{ s.session_id }}? Data will be lost.')">
+            <input type="hidden" name="subject_id" value="{{ target_subject }}">
+            <input type="hidden" name="session_id" value="{{ s.session_id }}">
+            <input type="hidden" name="session_type" value="staircase">
+            <button type="submit" class="btn btn-danger"
+                    style="padding:0.25rem 0.6rem;font-size:0.78rem;">Delete</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+<!-- ── Saved calibrated sessions ────────────────────────────────── -->
+{% if calibrated_sessions %}
+<div class="card">
+  <h2>Saved Calibrated Sessions</h2>
+  <table>
+    <thead><tr>
+      <th>Session ID</th><th>Trials</th><th>Notes</th><th></th>
+    </tr></thead>
+    <tbody>
+      {% for s in calibrated_sessions %}
+      <tr>
+        <td>{{ s.session_id }}</td>
+        <td>{{ s.n_completed_trials }}</td>
+        <td style="color:#666;font-size:0.85rem;">{{ s.notes or "—" }}</td>
+        <td>
+          <form method="post" action="{{ url_for('delete_saved_session') }}"
+                onsubmit="return confirm('Permanently delete {{ s.session_id }}? Data will be lost.')">
+            <input type="hidden" name="subject_id" value="{{ target_subject }}">
+            <input type="hidden" name="session_id" value="{{ s.session_id }}">
+            <input type="hidden" name="session_type" value="calibrated">
+            <button type="submit" class="btn btn-danger"
+                    style="padding:0.25rem 0.6rem;font-size:0.78rem;">Delete</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+<!-- ── Per-participant plots ─────────────────────────────────────── -->
+{% if staircase_plot %}
+<div class="card">
+  <h2>Staircase Traces (Experiment 1)</h2>
+  <img src="data:image/png;base64,{{ staircase_plot }}"
+       style="max-width:100%;border-radius:4px;" alt="staircase traces">
+</div>
+{% endif %}
+
+{% if psychometric_plot %}
+<div class="card">
+  <h2>Psychometric Curves (Experiment 2)</h2>
+  <img src="data:image/png;base64,{{ psychometric_plot }}"
+       style="max-width:100%;border-radius:4px;" alt="psychometric curves">
+</div>
+{% endif %}
+
+{% if not baseline_sessions and not calibrated_sessions and not pending_sessions %}
+<div class="card" style="color:#888;">
+  No sessions recorded yet for this participant.
+</div>
+{% endif %}
+
+{% endblock %}
