@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Create Account{% endblock %}
+{% block content %}
+<div style="max-width:420px; margin:3rem auto;">
+  <div class="card">
+    <h1>Create Participant Account</h1>
+    {% if error %}<div class="alert alert-error">{{ error }}</div>{% endif %}
+    {% if success %}
+      <div class="alert alert-success">{{ success }}</div>
+      <p><a href="{{ url_for('login') }}" class="btn btn-primary">Log In</a></p>
+    {% else %}
+    <form method="post">
+      <label for="subject_id">Participant ID</label>
+      <input type="text" id="subject_id" name="subject_id" required autofocus
+             placeholder="e.g. subject_001" autocomplete="username">
+      <label for="password">Password</label>
+      <input type="password" id="password" name="password" required minlength="6"
+             autocomplete="new-password">
+      <label for="confirm_password">Confirm Password</label>
+      <input type="password" id="confirm_password" name="confirm_password" required
+             autocomplete="new-password">
+      <div style="display:flex; gap:0.75rem; margin-top:0.5rem;">
+        <button type="submit" class="btn btn-success">Create Account</button>
+        <a href="{{ url_for('login') }}" class="btn btn-secondary">Back to Login</a>
+      </div>
+    </form>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

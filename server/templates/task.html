@@ -1,0 +1,218 @@
+{% extends "base.html" %}
+{% block title %}Task – {{ session_id }}{% endblock %}
+{% block content %}
+
+<style>
+  #task-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 0;
+  }
+  #trial-header {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #2c3e50;
+    min-height: 1.6rem;
+  }
+  #context-prompt {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: #154360;
+    min-height: 2rem;
+  }
+  #trial-img {
+    max-width: 700px;
+    width: 100%;
+    image-rendering: pixelated;
+    border: 2px solid #ccc;
+    border-radius: 4px;
+    background: #fff;
+    min-height: 120px;
+  }
+  #feedback {
+    font-size: 1.3rem;
+    font-weight: 700;
+    min-height: 2rem;
+  }
+  #instructions {
+    font-size: 0.9rem;
+    color: #666;
+    text-align: center;
+  }
+  #controls {
+    display: flex;
+    gap: 1rem;
+    margin-top: 0.5rem;
+  }
+  #spinner {
+    display: none;
+    color: #999;
+    font-size: 0.9rem;
+  }
+</style>
+
+<div id="task-container">
+  <div id="trial-header">Loading…</div>
+  <div id="context-prompt"></div>
+  <img id="trial-img" src="" alt="stimulus" style="display:none;">
+  <div id="feedback"></div>
+  <div id="spinner">Loading next trial…</div>
+  <div id="instructions">
+    Press <strong>← Left</strong> or <strong>→ Right</strong> arrow key to respond.
+  </div>
+  <div id="controls">
+    <button class="btn btn-danger" onclick="saveAndExit()">
+      {% if task_type == "staircase" %}Pause &amp; Exit{% else %}Save &amp; Exit{% endif %}
+    </button>
+    <a href="{{ url_for('dashboard') }}" class="btn btn-secondary" id="back-link"
+       style="display:none;">← Back to Dashboard</a>
+  </div>
+</div>
+
+<script>
+const TOKEN   = {{ token | tojson }};
+const ITI_MS  = {{ iti_ms }};
+let   enabled = false;
+
+// ── Fetch current trial ─────────────────────────────────────────────────────
+async function fetchTrial() {
+  setSpinner(true);
+  enabled = false;
+  try {
+    const res  = await fetch('/api/trial?token=' + encodeURIComponent(TOKEN));
+    const data = await res.json();
+    setSpinner(false);
+    if (data.error) { showError(data.error); return; }
+    if (data.done)  { handleDone();           return; }
+
+    const img = document.getElementById('trial-img');
+    img.src = 'data:image/png;base64,' + data.image_b64;
+    img.style.display = '';
+
+    const total    = data.total_trials || '?';
+    const idx      = (data.trial_index ?? 0) + 1;
+    const extraInfo = data.active_staircases != null
+                    ? `  (active staircases: ${data.active_staircases})`
+                    : '';
+    document.getElementById('trial-header').textContent =
+        `Trial ${idx} / ${total}${extraInfo}`;
+    document.getElementById('context-prompt').textContent =
+        `Which side is ${data.context}?`;
+    document.getElementById('feedback').textContent = '';
+    enabled = true;
+  } catch (e) {
+    setSpinner(false);
+    showError('Network error: ' + e.message);
+  }
+}
+
+// ── Keyboard handler ────────────────────────────────────────────────────────
+document.addEventListener('keydown', async (e) => {
+  if (!enabled) return;
+  if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+  e.preventDefault();
+  enabled = false;
+
+  const choice = e.key === 'ArrowLeft' ? 'left' : 'right';
+  const fb = document.getElementById('feedback');
+
+  try {
+    const res  = await fetch('/api/respond', {
+      method:  'POST',
+      headers: {'Content-Type': 'application/json'},
+      body:    JSON.stringify({token: TOKEN, choice}),
+    });
+    const data = await res.json();
+
+    if (data.error) { showError(data.error); return; }
+
+    fb.textContent = data.is_correct ? '✓ Correct' : '✗ Incorrect';
+    fb.style.color = data.is_correct ? '#1e8449'   : '#c0392b';
+
+    setTimeout(() => {
+      if (data.done) {
+        handleDone();
+      } else {
+        fetchTrial();
+      }
+    }, ITI_MS);
+  } catch (e) {
+    showError('Network error: ' + e.message);
+  }
+});
+
+// ── Task complete ────────────────────────────────────────────────────────────
+async function handleDone() {
+  enabled = false;
+  document.getElementById('trial-img').style.display = 'none';
+  document.getElementById('context-prompt').textContent = '';
+  document.getElementById('trial-header').textContent   = 'Task complete!';
+  const fb = document.getElementById('feedback');
+  fb.style.color = '#1e8449';
+  fb.textContent = 'Saving results…';
+  document.getElementById('instructions').textContent = '';
+
+  await finalizeSession();
+}
+
+async function finalizeSession() {
+  try {
+    const res  = await fetch('/api/finalize', {
+      method:  'POST',
+      headers: {'Content-Type': 'application/json'},
+      body:    JSON.stringify({token: TOKEN}),
+    });
+    const data = await res.json();
+    const fb = document.getElementById('feedback');
+    if (data.paused) {
+      fb.style.color = '#e67e22';
+      fb.textContent = '⏸ Session paused. Returning to dashboard…';
+      document.getElementById('back-link').style.display = '';
+      setTimeout(() => window.location.href = '/dashboard', 2000);
+    } else if (data.success) {
+      fb.textContent = '✓ Results saved. Returning to dashboard…';
+      document.getElementById('back-link').style.display = '';
+      setTimeout(() => window.location.href = '/dashboard', 2500);
+    } else {
+      fb.textContent = 'Save failed: ' + (data.error || 'unknown error');
+      fb.style.color = '#c0392b';
+      document.getElementById('back-link').style.display = '';
+    }
+  } catch (e) {
+    showError('Could not save: ' + e.message);
+  }
+}
+
+// ── Save & Exit (partial) ───────────────────────────────────────────────────
+async function saveAndExit() {
+  const isStaircase = {{ (task_type == "staircase") | tojson }};
+  const msg = isStaircase
+    ? 'Pause and exit? The staircase will remain resumable from the dashboard.\nResults are only saved to disk once the staircase is complete.'
+    : 'Save progress and exit?';
+  if (!confirm(msg)) return;
+  enabled = false;
+  await finalizeSession();
+}
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+function setSpinner(on) {
+  document.getElementById('spinner').style.display = on ? '' : 'none';
+}
+function showError(msg) {
+  document.getElementById('trial-header').textContent = 'Error';
+  document.getElementById('feedback').textContent = msg;
+  document.getElementById('feedback').style.color  = '#c0392b';
+  document.getElementById('back-link').style.display = '';
+}
+
+{% if is_done %}
+// Session was already completed before page load (e.g. browser back button).
+window.addEventListener('load', handleDone);
+{% else %}
+window.addEventListener('load', fetchTrial);
+{% endif %}
+</script>
+
+{% endblock %}

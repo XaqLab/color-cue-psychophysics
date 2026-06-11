@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Admin – Register Participant{% endblock %}
+{% block content %}
+<h1>Admin Panel – Register Participant</h1>
+<a href="{{ url_for('admin') }}" class="btn btn-secondary" style="margin-bottom:1rem;">
+  ← Back to Admin
+</a>
+<div class="card" style="max-width:480px;">
+  {% if error %}<div class="alert alert-error">{{ error }}</div>{% endif %}
+  {% if success %}<div class="alert alert-success">{{ success }}</div>{% endif %}
+  <form method="post">
+    <label for="subject_id">Participant ID</label>
+    <input type="text" id="subject_id" name="subject_id" required autofocus
+           placeholder="e.g. subject_001">
+    <label for="password">Initial Password</label>
+    <input type="password" id="password" name="password" required minlength="6">
+    <label style="display:flex; align-items:center; gap:0.5rem; margin-bottom:1rem;">
+      <input type="checkbox" name="is_admin" value="1">
+      Grant administrator privileges
+    </label>
+    <button type="submit" class="btn btn-success">Create Account</button>
+  </form>
+</div>
+{% endblock %}

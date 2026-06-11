@@ -1,0 +1,173 @@
+{% extends "base.html" %}
+{% block title %}Dashboard – {{ subject_id }}{% endblock %}
+{% block content %}
+<h1>Welcome, {{ subject_id }}</h1>
+
+{% if is_admin %}
+<p style="margin-bottom:1rem;">
+  <a href="{{ url_for('admin') }}" class="btn btn-secondary">⚙ Admin Panel</a>
+</p>
+{% endif %}
+
+{% if sigma_internal is not none %}
+<div class="card" style="background:#eaf6fb; border-left:4px solid #2980b9;">
+  <strong>Estimated σ_internal:</strong> {{ "%.4f"|format(sigma_internal) }}
+  &nbsp;–&nbsp; computed from your saved baseline sessions.
+</div>
+{% endif %}
+
+<!-- ── In-progress sessions ─────────────────────────────────────── -->
+{% if pending_sessions %}
+<div class="card">
+  <h2>In-Progress Sessions</h2>
+  <table>
+    <thead><tr>
+      <th>Session ID</th><th>Type</th><th>Trials Done</th><th>Status</th><th></th>
+    </tr></thead>
+    <tbody>
+      {% for s in pending_sessions %}
+      <tr>
+        <td>{{ s.session_id }}</td>
+        <td>
+          {% if s.task_type == "staircase" %}
+            <span class="tag tag-staircase">Staircase</span>
+          {% else %}
+            <span class="tag tag-calibrated">Calibrated</span>
+          {% endif %}
+        </td>
+        <td>{{ s.trials_completed }}</td>
+        <td>{% if s.is_done %}<em>complete – not yet saved</em>{% else %}running{% endif %}</td>
+        <td style="display:flex; gap:0.4rem;">
+          <a href="{{ url_for('task_page', token=s.token) }}" class="btn btn-primary"
+             style="padding:0.3rem 0.8rem; font-size:0.8rem;">
+            {% if s.is_done %}Save{% else %}Resume{% endif %}
+          </a>
+          <form method="post" action="{{ url_for('delete_active_session') }}"
+                style="display:inline;"
+                onsubmit="return confirm('Delete this in-progress session? This cannot be undone.')">
+            <input type="hidden" name="token" value="{{ s.token }}">
+            <button type="submit" class="btn btn-danger"
+                    style="padding:0.3rem 0.7rem; font-size:0.8rem;">Delete</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+<!-- ── Start new sessions ────────────────────────────────────────── -->
+<div style="display:flex; gap:1.5rem; flex-wrap:wrap;">
+
+  <!-- Experiment 1: Staircase -->
+  <div class="card" style="flex:1; min-width:260px;">
+    <h2>Experiment 1 — Baseline Staircase</h2>
+    <p style="font-size:0.85rem; margin-bottom:1rem; color:#555;">
+      2-down-1-up staircase at σ_ext = 0.  Run separate sessions for
+      <em>redder</em> and <em>bluer</em> contexts.
+    </p>
+    <form method="post" action="{{ url_for('start_staircase') }}">
+      <label>Session ID</label>
+      <input type="text" name="session_id" placeholder="baseline_redder_001" required>
+      <label>Context</label>
+      <select name="context">
+        <option value="redder">redder</option>
+        <option value="bluer">bluer</option>
+      </select>
+      <label>Notes (optional)</label>
+      <input type="text" name="notes" placeholder="e.g. first pilot run">
+      <button type="submit" class="btn btn-primary">Start Staircase</button>
+    </form>
+  </div>
+
+  <!-- Experiment 2: Calibrated -->
+  <div class="card" style="flex:1; min-width:260px;">
+    <h2>Experiment 2 — Calibrated Fixed-Level</h2>
+    <p style="font-size:0.85rem; margin-bottom:1rem; color:#555;">
+      Uses your σ_internal estimate to set subject-specific σ_ext levels.
+      Requires at least one saved baseline session.
+    </p>
+    {% if sigma_internal is none %}
+    <div class="alert alert-error">
+      Complete Experiment 1 first to estimate σ_internal.
+    </div>
+    {% else %}
+    <form method="post" action="{{ url_for('start_calibrated') }}">
+      <label>Session ID</label>
+      <input type="text" name="session_id" placeholder="calibrated_001" required>
+      <label>Context</label>
+      <select name="context">
+        <option value="redder">redder</option>
+        <option value="bluer">bluer</option>
+      </select>
+      <label>Notes (optional)</label>
+      <input type="text" name="notes" placeholder="e.g. post-calibration run">
+      <button type="submit" class="btn btn-success">Start Calibrated Session</button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+
+{% if baseline_sessions %}
+<div class="card">
+  <h2>Saved Baseline Staircase Sessions</h2>
+  <table>
+    <thead><tr>
+      <th>Session ID</th><th>Trials</th><th>Context</th><th>Notes</th><th></th>
+    </tr></thead>
+    <tbody>
+      {% for s in baseline_sessions %}
+      <tr>
+        <td>{{ s.session_id }}</td>
+        <td>{{ s.n_completed_trials }}</td>
+        <td>{{ s.get("context", "—") }}</td>
+        <td style="color:#666; font-size:0.85rem;">{{ s.notes or "—" }}</td>
+        <td>
+          <form method="post" action="{{ url_for('delete_saved_session') }}"
+                onsubmit="return confirm('Permanently delete session {{ s.session_id }}? This removes the data from disk.')">
+            <input type="hidden" name="subject_id" value="{{ subject_id }}">
+            <input type="hidden" name="session_id" value="{{ s.session_id }}">
+            <input type="hidden" name="session_type" value="staircase">
+            <button type="submit" class="btn btn-danger"
+                    style="padding:0.25rem 0.6rem; font-size:0.78rem;">Delete</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+{% if calibrated_sessions %}
+<div class="card">
+  <h2>Saved Calibrated Sessions</h2>
+  <table>
+    <thead><tr>
+      <th>Session ID</th><th>Trials</th><th>Notes</th><th></th>
+    </tr></thead>
+    <tbody>
+      {% for s in calibrated_sessions %}
+      <tr>
+        <td>{{ s.session_id }}</td>
+        <td>{{ s.n_completed_trials }}</td>
+        <td style="color:#666; font-size:0.85rem;">{{ s.notes or "—" }}</td>
+        <td>
+          <form method="post" action="{{ url_for('delete_saved_session') }}"
+                onsubmit="return confirm('Permanently delete session {{ s.session_id }}? This removes the data from disk.')">
+            <input type="hidden" name="subject_id" value="{{ subject_id }}">
+            <input type="hidden" name="session_id" value="{{ s.session_id }}">
+            <input type="hidden" name="session_type" value="calibrated">
+            <button type="submit" class="btn btn-danger"
+                    style="padding:0.25rem 0.6rem; font-size:0.78rem;">Delete</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+{% endblock %}

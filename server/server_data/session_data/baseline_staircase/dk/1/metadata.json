@@ -1,0 +1,62 @@
+{
+  "subject_id": "dk",
+  "session_id": "1",
+  "notes": "",
+  "n_completed_trials": 30,
+  "config": {
+    "theta0": -0.7853981633974483,
+    "sigma_ext_levels": [
+      0.0
+    ],
+    "delta_grid": [
+      0.02,
+      0.03,
+      0.045,
+      0.065,
+      0.09,
+      0.13,
+      0.18,
+      0.25
+    ],
+    "start_index": 5,
+    "context": "redder",
+    "shared_noise": false,
+    "n_down": 2,
+    "n_up": 1,
+    "max_trials_per_staircase": 60,
+    "max_reversals_per_staircase": 10,
+    "threshold_reversal_count": 6,
+    "theta_min": -1.5707963267948966,
+    "theta_max": 0.0,
+    "size": [
+      112,
+      112
+    ],
+    "gap_pixels": 28,
+    "border_pixels": 14,
+    "kappa": 0.1,
+    "alpha": 1.0,
+    "beta": -2.0,
+    "trial_seed": null,
+    "stimulus_seed": null,
+    "iti_seconds": 0.3,
+    "show_feedback": true,
+    "figure_size": [
+      9.5,
+      5.5
+    ]
+  },
+  "staircase_summary": [
+    {
+      "staircase_id": "sigma_0",
+      "sigma_ext": 0.0,
+      "context": "redder",
+      "shared_noise": false,
+      "n_trials": 30,
+      "reversal_count": 10,
+      "active": false,
+      "threshold_reversal_count_used": 6,
+      "threshold_estimate": 0.0775
+    }
+  ]
+}

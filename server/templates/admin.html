@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}Admin Panel{% endblock %}
+{% block content %}
+<h1>Admin Panel</h1>
+<p style="margin-bottom:1rem; display:flex; gap:0.75rem; flex-wrap:wrap;">
+  <a href="{{ url_for('register') }}" class="btn btn-success">+ New Participant</a>
+  <a href="{{ url_for('admin_data') }}" class="btn btn-primary">📊 Data Dashboard</a>
+</p>
+
+<div class="card">
+  <h2>Registered Users</h2>
+  {% if users %}
+  <table>
+    <thead>
+      <tr>
+        <th>Participant ID</th>
+        <th>Role</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for u in users %}
+      <tr>
+        <td>
+          <a href="{{ url_for('admin_user', subject_id=u.subject_id) }}"
+             style="font-weight:600; color:#2980b9; text-decoration:none;">
+            {{ u.subject_id }}
+          </a>
+        </td>
+        <td>
+          {% if u.is_admin %}
+            <span class="tag" style="background:#fdebd0;color:#784212;">Admin</span>
+          {% else %}
+            <span class="tag" style="background:#eaf2ff;color:#1a5276;">Participant</span>
+          {% endif %}
+        </td>
+        <td style="display:flex; gap:0.4rem; flex-wrap:wrap;">
+          <a href="{{ url_for('admin_user', subject_id=u.subject_id) }}"
+             class="btn btn-secondary" style="padding:0.3rem 0.7rem;font-size:0.8rem;">
+            Manage
+          </a>
+          {% if u.subject_id != session.subject_id %}
+          <form method="post" action="{{ url_for('delete_user') }}"
+                style="display:inline;"
+                onsubmit="return confirm('Delete account for {{ u.subject_id }}? This only removes login credentials, not session data.')">
+            <input type="hidden" name="subject_id" value="{{ u.subject_id }}">
+            <button type="submit" class="btn btn-danger"
+                    style="padding:0.3rem 0.7rem;font-size:0.8rem;">
+              Delete Account
+            </button>
+          </form>
+          {% else %}
+            <em style="font-size:0.8rem;color:#888;align-self:center;">(you)</em>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p style="color:#888;">No users registered yet.</p>
+  {% endif %}
+</div>
+{% endblock %}

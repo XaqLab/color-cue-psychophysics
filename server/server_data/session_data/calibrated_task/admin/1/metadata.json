@@ -1,0 +1,46 @@
+{
+  "subject_id": "admin",
+  "session_id": "1",
+  "notes": "",
+  "n_completed_trials": 49,
+  "config": {
+    "theta0": -0.7853981633974483,
+    "delta_thetas": [
+      -0.2,
+      -0.14,
+      -0.08,
+      -0.04,
+      0.04,
+      0.08,
+      0.14,
+      0.2
+    ],
+    "sigma_ext_levels": [
+      0.10275861980572237,
+      0.16750920555114876
+    ],
+    "n_repeats": 6,
+    "contexts": [
+      "redder"
+    ],
+    "theta_min": -1.5707963267948966,
+    "theta_max": 0.0,
+    "size": [
+      112,
+      112
+    ],
+    "gap_pixels": 28,
+    "border_pixels": 14,
+    "kappa": 0.1,
+    "alpha": 1.0,
+    "beta": -2.0,
+    "trial_seed": null,
+    "stimulus_seed": null,
+    "iti_seconds": 0.3,
+    "show_feedback": true,
+    "figure_size": [
+      9.5,
+      5.5
+    ]
+  }
+}
