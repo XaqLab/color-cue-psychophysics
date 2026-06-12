@@ -401,8 +401,8 @@ def start_staircase():
     cfg = StaircaseTaskConfig(
         theta0=-np.pi / 4,
         sigma_ext_levels=(0.0,),
-        delta_grid=(0.02, 0.03, 0.045, 0.065, 0.09, 0.13, 0.18, 0.25),
-        start_index=5,
+        delta_grid=(0.02, 0.03, 0.045, 0.065, 0.09, 0.13, 0.18, 0.25, 0.45),
+        start_index=8,
         context=context,
         shared_noise=False,
         max_trials_per_staircase=60,
