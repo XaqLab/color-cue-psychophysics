@@ -7,6 +7,7 @@ import pandas as pd
 from matplotlib import pyplot as plt
 from scipy.optimize import curve_fit, minimize
 from scipy.special import expit, logit, ndtri, ndtr
+from scipy.stats import truncnorm
 
 from .stimulus import get_cmap, get_theta_array
 
@@ -204,6 +205,45 @@ def choose_right_probability(
     return ndtr(direction * delta_theta / np.maximum(comparison_sd, 1e-12))
 
 
+def sample_bounded_gaussian_noise(
+    target_theta: np.ndarray | Iterable[float] | float,
+    sigma: float,
+    rng: np.random.Generator | int | None = None,
+    theta_min: float = -np.pi / 2,
+    theta_max: float = 0,
+) -> float:
+    """Sample external Gaussian noise conditional on valid rendered theta.
+
+    The returned noise value is drawn from ``N(0, sigma^2)`` truncated so that
+    ``target_theta + noise`` lies inside ``[theta_min, theta_max]``. If
+    ``target_theta`` contains multiple targets, the same noise draw is valid for
+    every target; this supports shared-noise trials.
+    """
+    if theta_min > theta_max:
+        raise ValueError("theta_min must be less than or equal to theta_max.")
+    sigma = float(sigma)
+    if sigma < 0:
+        raise ValueError("sigma must be non-negative.")
+
+    targets = np.asarray(target_theta, dtype=float)
+    lower = float(np.max(theta_min - targets))
+    upper = float(np.min(theta_max - targets))
+    if lower > upper:
+        raise ValueError("No valid bounded-noise interval for the target theta values.")
+
+    if sigma == 0:
+        if lower <= 0.0 <= upper:
+            return 0.0
+        raise ValueError("Zero external noise cannot place target theta inside bounds.")
+    if np.isclose(lower, upper):
+        return lower
+
+    rng = np.random.default_rng(rng)
+    return float(
+        truncnorm.rvs(lower / sigma, upper / sigma, scale=sigma, random_state=rng)
+    )
+
+
 def make_trial_table(
     theta0: float,
     delta_thetas: Iterable[float],
@@ -219,7 +259,7 @@ def make_trial_table(
 
     Each row corresponds to one trial. The left and right latent hue angles are
     defined symmetrically around ``theta0`` and then perturbed by either
-    independent or shared external Gaussian noise.
+    independent or shared bounded external Gaussian noise.
 
     Args:
         theta0: Midpoint latent angle around which both stimuli are built.
@@ -228,8 +268,8 @@ def make_trial_table(
         n_repeats: Number of repeats per unique condition combination.
         contexts: Iterable of task prompts, typically ``("redder", "bluer")``.
         rng: Optional NumPy random generator or seed.
-        theta_min: Lower clipping bound for rendered latent angles.
-        theta_max: Upper clipping bound for rendered latent angles.
+        theta_min: Lower bound for rendered latent angles.
+        theta_max: Upper bound for rendered latent angles.
         shared_noise: If ``True``, use one common noise draw for both sides on a
             trial. If ``False``, draw left and right noise independently.
 
@@ -249,16 +289,32 @@ def make_trial_table(
                 right_target = theta0 + delta_theta / 2.0
                 for repeat in range(int(n_repeats)):
                     if shared_noise:
-                        shared = rng.normal(scale=sigma_ext)
+                        shared = sample_bounded_gaussian_noise(
+                            (left_target, right_target),
+                            sigma_ext,
+                            rng=rng,
+                            theta_min=theta_min,
+                            theta_max=theta_max,
+                        )
                         eps_left = shared
                         eps_right = shared
                     else:
-                        eps_left = rng.normal(scale=sigma_ext)
-                        eps_right = rng.normal(scale=sigma_ext)
-                    theta_left = np.clip(left_target + eps_left, theta_min, theta_max)
-                    theta_right = np.clip(
-                        right_target + eps_right, theta_min, theta_max
-                    )
+                        eps_left = sample_bounded_gaussian_noise(
+                            left_target,
+                            sigma_ext,
+                            rng=rng,
+                            theta_min=theta_min,
+                            theta_max=theta_max,
+                        )
+                        eps_right = sample_bounded_gaussian_noise(
+                            right_target,
+                            sigma_ext,
+                            rng=rng,
+                            theta_min=theta_min,
+                            theta_max=theta_max,
+                        )
+                    theta_left = left_target + eps_left
+                    theta_right = right_target + eps_right
                     rows.append(
                         {
                             "context": context,
@@ -273,8 +329,8 @@ def make_trial_table(
                             "theta_right": theta_right,
                             "repeat": repeat,
                             "shared_noise": shared_noise,
-                            "left_clipped": theta_left != left_target + eps_left,
-                            "right_clipped": theta_right != right_target + eps_right,
+                            "left_clipped": False,
+                            "right_clipped": False,
                         }
                     )
     trials = pd.DataFrame(rows)

@@ -9,6 +9,7 @@ from color_cue.psychophysics import (
     jnd_from_stimulus_sigma,
     make_noise_calibration_table,
     make_trial_table,
+    sample_bounded_gaussian_noise,
     simulate_matched_noise_observers,
     simulate_observer,
     stimulus_sigma_from_jnd,
@@ -28,6 +29,60 @@ def test_make_trial_table_columns_and_size():
     assert {"effective_delta", "correct_right", "theta_left", "theta_right"} <= set(
         trials.columns
     )
+
+
+def test_bounded_gaussian_noise_stays_within_theta_bounds():
+    rng = np.random.default_rng(0)
+    target = -0.01
+    samples = np.array(
+        [
+            sample_bounded_gaussian_noise(
+                target,
+                sigma=0.5,
+                rng=rng,
+                theta_min=-1.0,
+                theta_max=0.0,
+            )
+            for _ in range(200)
+        ]
+    )
+    observed = target + samples
+    assert np.all(observed >= -1.0)
+    assert np.all(observed <= 0.0)
+
+
+def test_trial_table_uses_truncated_noise_without_clipping():
+    trials = make_trial_table(
+        theta0=-0.05,
+        delta_thetas=(0.08,),
+        sigma_ext_levels=(0.5,),
+        n_repeats=200,
+        contexts=("redder",),
+        rng=0,
+        theta_min=-1.0,
+        theta_max=0.0,
+    )
+    assert np.all(trials["theta_left"].between(-1.0, 0.0))
+    assert np.all(trials["theta_right"].between(-1.0, 0.0))
+    assert not trials["left_clipped"].any()
+    assert not trials["right_clipped"].any()
+
+
+def test_shared_truncated_noise_is_valid_for_both_sides():
+    trials = make_trial_table(
+        theta0=-0.05,
+        delta_thetas=(0.08,),
+        sigma_ext_levels=(0.5,),
+        n_repeats=50,
+        contexts=("redder",),
+        rng=1,
+        theta_min=-1.0,
+        theta_max=0.0,
+        shared_noise=True,
+    )
+    assert np.allclose(trials["eps_left"], trials["eps_right"])
+    assert np.all(trials["theta_left"].between(-1.0, 0.0))
+    assert np.all(trials["theta_right"].between(-1.0, 0.0))
 
 
 def test_simulated_observer_and_fit():

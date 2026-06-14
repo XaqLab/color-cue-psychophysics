@@ -13,6 +13,7 @@ from .psychophysics import (
     compute_external_noise,
     fit_all_psychometrics,
     make_trial_table,
+    sample_bounded_gaussian_noise,
 )
 from .stimulus import get_cmap, get_theta_array
 
@@ -654,27 +655,33 @@ class StaircaseColorCueTask:
 
         sigma_ext = float(staircase["sigma_ext"])
         if self.config.shared_noise:
-            shared = self._trial_rng.normal(scale=sigma_ext)
+            shared = sample_bounded_gaussian_noise(
+                (theta_left_target, theta_right_target),
+                sigma_ext,
+                rng=self._trial_rng,
+                theta_min=self.config.theta_min,
+                theta_max=self.config.theta_max,
+            )
             eps_left = shared
             eps_right = shared
         else:
-            eps_left = self._trial_rng.normal(scale=sigma_ext)
-            eps_right = self._trial_rng.normal(scale=sigma_ext)
+            eps_left = sample_bounded_gaussian_noise(
+                theta_left_target,
+                sigma_ext,
+                rng=self._trial_rng,
+                theta_min=self.config.theta_min,
+                theta_max=self.config.theta_max,
+            )
+            eps_right = sample_bounded_gaussian_noise(
+                theta_right_target,
+                sigma_ext,
+                rng=self._trial_rng,
+                theta_min=self.config.theta_min,
+                theta_max=self.config.theta_max,
+            )
 
-        theta_left = float(
-            np.clip(
-                theta_left_target + eps_left,
-                self.config.theta_min,
-                self.config.theta_max,
-            )
-        )
-        theta_right = float(
-            np.clip(
-                theta_right_target + eps_right,
-                self.config.theta_min,
-                self.config.theta_max,
-            )
-        )
+        theta_left = float(theta_left_target + eps_left)
+        theta_right = float(theta_right_target + eps_right)
         effective_delta = (
             delta_theta if self.config.context == "redder" else -delta_theta
         )

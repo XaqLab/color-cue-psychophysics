@@ -26,7 +26,7 @@ from color_cue.interactive import (
     save_staircase_session,
     save_task_session,
 )
-from color_cue.psychophysics import make_trial_table
+from color_cue.psychophysics import make_trial_table, sample_bounded_gaussian_noise
 
 from render import render_trial_image
 
@@ -290,17 +290,31 @@ class WebStaircaseTask(_WebTaskBase):
 
         sigma_ext = float(staircase["sigma_ext"])
         if self.config.shared_noise:
-            eps_l = eps_r = self._trial_rng.normal(scale=sigma_ext)
+            eps_l = eps_r = sample_bounded_gaussian_noise(
+                (theta_l_tgt, theta_r_tgt),
+                sigma_ext,
+                rng=self._trial_rng,
+                theta_min=self.config.theta_min,
+                theta_max=self.config.theta_max,
+            )
         else:
-            eps_l = self._trial_rng.normal(scale=sigma_ext)
-            eps_r = self._trial_rng.normal(scale=sigma_ext)
+            eps_l = sample_bounded_gaussian_noise(
+                theta_l_tgt,
+                sigma_ext,
+                rng=self._trial_rng,
+                theta_min=self.config.theta_min,
+                theta_max=self.config.theta_max,
+            )
+            eps_r = sample_bounded_gaussian_noise(
+                theta_r_tgt,
+                sigma_ext,
+                rng=self._trial_rng,
+                theta_min=self.config.theta_min,
+                theta_max=self.config.theta_max,
+            )
 
-        theta_l = float(
-            np.clip(theta_l_tgt + eps_l, self.config.theta_min, self.config.theta_max)
-        )
-        theta_r = float(
-            np.clip(theta_r_tgt + eps_r, self.config.theta_min, self.config.theta_max)
-        )
+        theta_l = float(theta_l_tgt + eps_l)
+        theta_r = float(theta_r_tgt + eps_r)
         effective_delta = delta_theta if self.config.context == "redder" else -delta_theta
         return {
             "context": self.config.context,
