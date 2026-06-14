@@ -13,5 +13,10 @@
     "subject_id": "dk",
     "password_hash": "scrypt:32768:8:1$H97YGBGA3KCMR3X5$cf805edf813dd97f0569c4b971202acd01f7f59d936819f8947156bec653995322a73332572bfc336236a3fbed6f2bdc6b7e2cd653ffb43e673abbe7016f67c4",
     "is_admin": false
+  },
+  "nq": {
+    "subject_id": "nq",
+    "password_hash": "scrypt:32768:8:1$s4oixb9jXQdkzFxK$c6ceb900ed683bd0f7b3e5ec6a49d6f0fd0a9f1d527865367139e4c7f268c95d2ab25acd650576d4256f2c7632cf777a52b30a0ddf480b3e4994403e71c04e12",
+    "is_admin": false
   }
 }
